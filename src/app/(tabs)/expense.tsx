@@ -2,7 +2,7 @@ import {
   Text,
   TextInput,
   View,
-  FlatList,
+  SectionList,
   Pressable,
   Modal,
   StyleSheet,
@@ -16,21 +16,82 @@ import ExpenseData from "@/expenseData";
 export default function ExpenseTracker() {
   const [data, setData] = useState<Expense[]>(ExpenseData);
   const [modalVisible, setModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [search, setSearch] = useState("");
 
   const total = data.reduce((sum, expense) => sum + expense.amount, 0);
   const count = data.length;
-  const highest = data.length > 0 ? Math.max(...data.map((d) => d.amount)) : 0;
+  const thisMonthTotal = data
+    .filter((d) => {
+      const date = new Date(d.date);
+      const now = new Date();
+      return (
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear()
+      );
+    })
+    .reduce((sum, expense) => sum + expense.amount, 0);
 
   const filteredData = data.filter((item) =>
-    item.title.toLowerCase().includes(searchQuery.toLowerCase()),
+    item.title.toLowerCase().includes(search.toLowerCase()),
   );
+
+  const getDateTitle = (dateStr: string) => {
+    const expenseDate = new Date(dateStr);
+    if (isNaN(expenseDate.getTime())) {
+      return "Other";
+    }
+
+    const today = new Date();
+    const expenseDateClean = new Date(
+      expenseDate.getFullYear(),
+      expenseDate.getMonth(),
+      expenseDate.getDate(),
+    );
+    const todayClean = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+
+    const diffTime = todayClean.getTime() - expenseDateClean.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return "Today";
+    } else if (diffDays === 1) {
+      return "Yesterday";
+    } else {
+      return expenseDate.toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+  };
+
+  const sortedExpenses = [...filteredData].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
+
+  const groups: { [key: string]: Expense[] } = {};
+  sortedExpenses.forEach((expense) => {
+    const title = getDateTitle(expense.date);
+    if (!groups[title]) {
+      groups[title] = [];
+    }
+    groups[title].push(expense);
+  });
+
+  const sections = Object.keys(groups).map((title) => ({
+    title,
+    data: groups[title],
+  }));
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
 
-      <StatsCard total={total} count={count} highest={highest} />
+      <StatsCard total={total} count={count} thisMonthTotal={thisMonthTotal} />
 
       <View
         style={{
@@ -40,21 +101,17 @@ export default function ExpenseTracker() {
           padding: 20,
         }}
       >
-        {/* Search Bar */}
         <View style={styles.searchBar}>
           <FontAwesome name="search" size={16} color="#8E9AA0" />
           <TextInput
             placeholder="Search expenses..."
             placeholderTextColor="#8E9AA0"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+            value={search}
+            onChangeText={setSearch}
             style={styles.searchInput}
           />
-          {searchQuery !== "" && (
-            <Pressable
-              onPress={() => setSearchQuery("")}
-              style={{ padding: 4 }}
-            >
+          {search !== "" && (
+            <Pressable onPress={() => setSearch("")} style={{ padding: 4 }}>
               <FontAwesome name="times-circle" size={16} color="#8E9AA0" />
             </Pressable>
           )}
@@ -75,13 +132,13 @@ export default function ExpenseTracker() {
           />
         </Modal>
 
-        {/* Expense List */}
-        <FlatList
-          data={filteredData}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id}
           style={styles.list}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
+          stickySectionHeadersEnabled={false}
           renderItem={({ item }) => (
             <ExpenseItem
               expense={item}
@@ -90,11 +147,16 @@ export default function ExpenseTracker() {
               }}
             />
           )}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeaderContainer}>
+              <Text style={styles.sectionHeaderTitle}>{title}</Text>
+            </View>
+          )}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <FontAwesome name="folder-open-o" size={48} color="#C4CBD0" />
               <Text style={styles.emptyText}>
-                {searchQuery
+                {search
                   ? "No matching expenses found."
                   : "No expenses added yet."}
               </Text>
@@ -267,11 +329,11 @@ function AddExpenseModal({
 function StatsCard({
   total,
   count,
-  highest,
+  thisMonthTotal,
 }: {
   total: number;
   count: number;
-  highest: number;
+  thisMonthTotal: number;
 }) {
   return (
     <View style={styles.headerCard}>
@@ -284,8 +346,8 @@ function StatsCard({
           <Text style={styles.statVal}>{count}</Text>
         </View>
         <View style={[styles.statCol, { alignItems: "flex-end" }]}>
-          <Text style={styles.statLabel}>Highest Expense</Text>
-          <Text style={styles.statVal}>${highest.toFixed(2)}</Text>
+          <Text style={styles.statLabel}>This Month</Text>
+          <Text style={styles.statVal}>${thisMonthTotal.toFixed(2)}</Text>
         </View>
       </View>
     </View>
@@ -295,16 +357,20 @@ function StatsCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "green",
+    backgroundColor: "#064E3B",
     paddingTop: "10%",
   },
   headerCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     borderRadius: 16,
     padding: 20,
+    marginHorizontal: 20,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
   },
   headerLabel: {
-    color: "#9EA7AD",
+    color: "#D1FAE5",
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -320,7 +386,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     borderTopWidth: 1,
-    borderTopColor: "#2F3539",
+    borderTopColor: "rgba(255, 255, 255, 0.15)",
     paddingTop: 16,
     justifyContent: "space-between",
   },
@@ -328,7 +394,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statLabel: {
-    color: "#9EA7AD",
+    color: "#D1FAE5",
     fontSize: 11,
     marginBottom: 2,
   },
@@ -369,7 +435,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
     marginBottom: 12,
   },
   cardLeft: {
@@ -434,10 +501,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#2563EB",
+    backgroundColor: "#059669",
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#2563EB",
+    shadowColor: "#059669",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -512,7 +579,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnPrimary: {
-    backgroundColor: "#2563EB",
+    backgroundColor: "#059669",
   },
   btnCancel: {
     backgroundColor: "#F1F5F9",
@@ -528,5 +595,18 @@ const styles = StyleSheet.create({
     color: "#475569",
     fontWeight: "600",
     fontSize: 15,
+  },
+  sectionHeaderContainer: {
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 10,
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  sectionHeaderTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#059669",
+    letterSpacing: 1,
+    textTransform: "uppercase",
   },
 });
