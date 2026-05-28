@@ -146,7 +146,10 @@ export default function ExpenseTracker() {
               setDeleteId("");
               setModalType(null);
             }}
-            onCancel={() => setModalType(null)}
+            onCancel={() => {
+              setDeleteId("");
+              setModalType(null);
+            }}
           />
         </Modal>
 
