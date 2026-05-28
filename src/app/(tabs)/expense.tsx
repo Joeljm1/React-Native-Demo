@@ -13,10 +13,13 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import type { Expense } from "@/expenseData";
 import ExpenseData from "@/expenseData";
 
+type ModalType = "add" | "delete" | null;
+
 export default function ExpenseTracker() {
   const [data, setData] = useState<Expense[]>(ExpenseData);
-  const [modalVisible, setModalVisible] = useState(false);
   const [search, setSearch] = useState("");
+  const [deleteId, setDeleteId] = useState("");
+  const [modalType, setModalType] = useState<ModalType>(null);
 
   const total = data.reduce((sum, expense) => sum + expense.amount, 0);
   const count = data.length;
@@ -118,17 +121,32 @@ export default function ExpenseTracker() {
         </View>
 
         <Modal
-          visible={modalVisible}
+          visible={modalType === "add"}
           animationType="slide"
           transparent={true}
-          onRequestClose={() => setModalVisible(false)}
+          onRequestClose={() => setModalType(null)}
         >
           <AddExpenseModal
             onSubmit={(newExpense) => {
               setData([...data, newExpense]);
-              setModalVisible(false);
+              setModalType(null);
             }}
-            onClose={() => setModalVisible(false)}
+            onClose={() => setModalType(null)}
+          />
+        </Modal>
+        <Modal
+          visible={modalType === "delete"}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setModalType(null)}
+        >
+          <DeleteConfirmationModal
+            onConfirm={() => {
+              setData(data.filter((d) => d.id !== deleteId));
+              setDeleteId("");
+              setModalType(null);
+            }}
+            onCancel={() => setModalType(null)}
           />
         </Modal>
 
@@ -143,7 +161,8 @@ export default function ExpenseTracker() {
             <ExpenseItem
               expense={item}
               onDelete={() => {
-                setData(data.filter((d) => d.id !== item.id));
+                setDeleteId(item.id);
+                setModalType("delete");
               }}
             />
           )}
@@ -165,7 +184,7 @@ export default function ExpenseTracker() {
         />
 
         <Pressable
-          onPress={() => setModalVisible(true)}
+          onPress={() => setModalType("add")}
           style={({ pressed }) => [
             styles.floatingBtn,
             pressed && { opacity: 0.9, transform: [{ scale: 0.95 }] },
@@ -180,7 +199,7 @@ export default function ExpenseTracker() {
 
 function ExpenseItem({
   expense,
-  onDelete: deleteItem,
+  onDelete,
 }: {
   expense: Expense;
   onDelete: () => void;
@@ -208,7 +227,7 @@ function ExpenseItem({
       <View style={styles.cardRight}>
         <Text style={styles.cardAmount}>-${expense.amount.toFixed(2)}</Text>
         <Pressable
-          onPress={deleteItem}
+          onPress={onDelete}
           style={({ pressed }) => [
             styles.deleteBtn,
             pressed && { opacity: 0.7 },
@@ -264,12 +283,14 @@ function AddExpenseModal({
   }
 
   return (
-    <View style={styles.modalBg}>
+    <View style={styles.addModalBg}>
       <View style={styles.modalCard}>
+        <View style={styles.sheetHandle} />
+
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>Add Expense</Text>
           <Pressable onPress={onClose} style={styles.modalClose}>
-            <FontAwesome name="times" size={18} color="#8E9AA0" />
+            <FontAwesome name="times" size={16} color="#64748B" />
           </Pressable>
         </View>
 
@@ -319,6 +340,48 @@ function AddExpenseModal({
             ]}
           >
             <Text style={styles.btnTextPrimary}>Add Expense</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function DeleteConfirmationModal({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <View style={styles.deleteModalBg}>
+      <View style={styles.deleteModalCard}>
+        <Text style={styles.modalTitle}>Delete Expense</Text>
+        <Text style={{ color: "#475569", marginTop: 8 }}>
+          Are you sure you want to delete this expense?
+        </Text>
+
+        <View style={styles.modalActions}>
+          <Pressable
+            onPress={onCancel}
+            style={({ pressed }) => [
+              styles.btn,
+              styles.btnCancel,
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <Text style={styles.btnTextCancel}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            onPress={onConfirm}
+            style={({ pressed }) => [
+              styles.btn,
+              styles.btnPrimary,
+              pressed && { opacity: 0.9 },
+            ]}
+          >
+            <Text style={styles.btnTextPrimary}>Delete</Text>
           </Pressable>
         </View>
       </View>
@@ -510,53 +573,81 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  modalBg: {
+  addModalBg: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.4)",
+    justifyContent: "flex-end",
+  },
+
+  deleteModalBg: {
+    flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
+    marginHorizontal: 20,
   },
   modalCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 20,
+    borderTopStartRadius: 20,
     width: "100%",
-    maxWidth: 380,
     padding: 24,
+    paddingBottom: 40,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 24,
+  },
+  deleteModalCard: {
+    backgroundColor: "#FFFFFF",
+    borderTopStartRadius: 20,
+    borderBottomEndRadius: 20,
+    width: "100%",
+    padding: 24,
+    paddingBottom: 40,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 24,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E2E8F0",
+    alignSelf: "center",
+    marginBottom: 16,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#1E2022",
+    color: "#0F172A",
   },
   modalClose: {
-    padding: 4,
+    padding: 6,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
   },
   input: {
     height: 48,
     borderWidth: 1,
-    borderColor: "#E5E9EB",
-    borderRadius: 10,
+    borderColor: "#E2E8F0",
+    borderRadius: 8, // Sharper modern rounded corner
     paddingHorizontal: 16,
     fontSize: 15,
-    color: "#1E2022",
-    backgroundColor: "#F8F9FA",
+    color: "#0F172A",
+    backgroundColor: "#F8FAFC",
   },
   inputLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#4A545A",
+    color: "#475569",
     marginBottom: 6,
     marginTop: 12,
   },
@@ -574,7 +665,7 @@ const styles = StyleSheet.create({
   btn: {
     flex: 1,
     height: 48,
-    borderRadius: 10,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
   },
