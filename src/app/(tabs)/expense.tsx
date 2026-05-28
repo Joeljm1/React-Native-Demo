@@ -7,6 +7,8 @@ import {
   Modal,
   StyleSheet,
   StatusBar,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useState } from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
@@ -286,67 +288,77 @@ function AddExpenseModal({
   }
 
   return (
-    <View style={styles.addModalBg}>
-      <View style={styles.modalCard}>
-        <View style={styles.sheetHandle} />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <View style={styles.addModalBg}>
+        <View style={styles.modalCard}>
+          <View style={styles.sheetHandle} />
 
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Add Expense</Text>
-          <Pressable onPress={onClose} style={styles.modalClose}>
-            <FontAwesome name="times" size={16} color="#64748B" />
-          </Pressable>
-        </View>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Expense</Text>
+            <Pressable onPress={onClose} style={styles.modalClose}>
+              <FontAwesome name="times" size={16} color="#64748B" />
+            </Pressable>
+          </View>
 
-        <Text style={styles.inputLabel}>Title</Text>
-        <TextInput
-          placeholder="e.g. Groceries"
-          placeholderTextColor="#8E9AA0"
-          value={title}
-          onChangeText={setTitle}
-          style={[styles.input, titleError ? { borderColor: "#EF4444" } : null]}
-        />
-        {titleError ? <Text style={styles.errorText}>{titleError}</Text> : null}
-
-        <Text style={styles.inputLabel}>Amount ($)</Text>
-        <TextInput
-          placeholder="0.00"
-          placeholderTextColor="#8E9AA0"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
-          style={[
-            styles.input,
-            amountError ? { borderColor: "#EF4444" } : null,
-          ]}
-        />
-        {amountError ? (
-          <Text style={styles.errorText}>{amountError}</Text>
-        ) : null}
-
-        <View style={styles.modalActions}>
-          <Pressable
-            onPress={onClose}
-            style={({ pressed }) => [
-              styles.btn,
-              styles.btnCancel,
-              pressed && { opacity: 0.8 },
+          <Text style={styles.inputLabel}>Title</Text>
+          <TextInput
+            placeholder="e.g. Groceries"
+            placeholderTextColor="#8E9AA0"
+            value={title}
+            onChangeText={setTitle}
+            style={[
+              styles.input,
+              titleError ? { borderColor: "#EF4444" } : null,
             ]}
-          >
-            <Text style={styles.btnTextCancel}>Cancel</Text>
-          </Pressable>
-          <Pressable
-            onPress={handleAdd}
-            style={({ pressed }) => [
-              styles.btn,
-              styles.btnPrimary,
-              pressed && { opacity: 0.9 },
+          />
+          {titleError ? (
+            <Text style={styles.errorText}>{titleError}</Text>
+          ) : null}
+
+          <Text style={styles.inputLabel}>Amount ($)</Text>
+          <TextInput
+            placeholder="0.00"
+            placeholderTextColor="#8E9AA0"
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="numeric"
+            style={[
+              styles.input,
+              amountError ? { borderColor: "#EF4444" } : null,
             ]}
-          >
-            <Text style={styles.btnTextPrimary}>Add Expense</Text>
-          </Pressable>
+          />
+          {amountError ? (
+            <Text style={styles.errorText}>{amountError}</Text>
+          ) : null}
+
+          <View style={styles.modalActions}>
+            <Pressable
+              onPress={onClose}
+              style={({ pressed }) => [
+                styles.btn,
+                styles.btnCancel,
+                pressed && { opacity: 0.8 },
+              ]}
+            >
+              <Text style={styles.btnTextCancel}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleAdd}
+              style={({ pressed }) => [
+                styles.btn,
+                styles.btnPrimary,
+                pressed && { opacity: 0.9 },
+              ]}
+            >
+              <Text style={styles.btnTextPrimary}>Add Expense</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
